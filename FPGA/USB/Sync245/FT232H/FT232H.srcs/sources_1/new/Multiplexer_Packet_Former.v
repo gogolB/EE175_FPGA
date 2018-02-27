@@ -179,68 +179,69 @@ module Multiplexer_Packet_Former(
     always@(posedge sys_clk) begin
         if(reset)
             state <= IDLE;
+        if(readData) begin
+            case(state)
+                IDLE: begin
+                    if(~camera1FIFOEmpty) begin
+                        state <= READ_CAMERA_1;
+                    end else begin
+                        state <= IDLE;
+                    end
+                end
+                
+                READ_CAMERA_1: begin
+                    if(~camera2FIFOEmpty) begin
+                        state <= READ_CAMERA_2;
+                    end else begin
+                        state <= WAIT_CAMERA_2;
+                    end
+                end
+                
+                WAIT_CAMERA_2: begin
+                    if(~camera2FIFOEmpty) begin
+                        state <= READ_CAMERA_2;
+                    end else begin
+                        state <= WAIT_CAMERA_2;
+                    end
+                end
     
-        case(state)
-            IDLE: begin
-                if(~camera1FIFOEmpty) begin
-                    state <= READ_CAMERA_1;
-                end else begin
+                READ_CAMERA_2: begin
+                    if(~camera3FIFOEmpty) begin
+                        state <= READ_CAMERA_3;
+                    end else begin
+                        state <= WAIT_CAMERA_3;
+                    end
+                end
+                
+                WAIT_CAMERA_3: begin
+                    if(~camera3FIFOEmpty) begin
+                        state <= READ_CAMERA_3;
+                    end else begin
+                        state <= WAIT_CAMERA_3;
+                    end
+                end
+    
+                READ_CAMERA_3: begin
+                    if(~camera1FIFOEmpty) begin
+                        state <= READ_CAMERA_1;
+                    end else begin
+                        state <= WAIT_CAMERA_1;
+                    end
+                end
+                
+                WAIT_CAMERA_1: begin
+                    if(~camera1FIFOEmpty) begin
+                        state <= READ_CAMERA_1;
+                    end else begin
+                        state <= WAIT_CAMERA_1;
+                    end
+                end
+                
+                default: begin
                     state <= IDLE;
                 end
-            end
-            
-            READ_CAMERA_1: begin
-                if(~camera2FIFOEmpty) begin
-                    state <= READ_CAMERA_2;
-                end else begin
-                    state <= WAIT_CAMERA_2;
-                end
-            end
-            
-            WAIT_CAMERA_2: begin
-                if(~camera2FIFOEmpty) begin
-                    state <= READ_CAMERA_2;
-                end else begin
-                    state <= WAIT_CAMERA_2;
-                end
-            end
-
-            READ_CAMERA_2: begin
-                if(~camera3FIFOEmpty) begin
-                    state <= READ_CAMERA_3;
-                end else begin
-                    state <= WAIT_CAMERA_3;
-                end
-            end
-            
-            WAIT_CAMERA_3: begin
-                if(~camera3FIFOEmpty) begin
-                    state <= READ_CAMERA_3;
-                end else begin
-                    state <= WAIT_CAMERA_3;
-                end
-            end
-
-            READ_CAMERA_3: begin
-                if(~camera1FIFOEmpty) begin
-                    state <= READ_CAMERA_1;
-                end else begin
-                    state <= WAIT_CAMERA_1;
-                end
-            end
-            
-            WAIT_CAMERA_1: begin
-                if(~camera1FIFOEmpty) begin
-                    state <= READ_CAMERA_1;
-                end else begin
-                    state <= WAIT_CAMERA_1;
-                end
-            end
-            
-            default: begin
-                state <= IDLE;
-            end
-        endcase
+            endcase
+        end
        
     end                                                                                                                       
     

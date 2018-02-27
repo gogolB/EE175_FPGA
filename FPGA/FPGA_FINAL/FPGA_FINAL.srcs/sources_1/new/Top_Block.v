@@ -31,11 +31,17 @@ module Top_Block(
     input wire ftdi_clk,
     output wire ftdi_siwu,
     
+    // Camera 1
+    // Camera 2
+    // Camera 3
+    
     // Local system clocks
     input sysClk,
     // Debug Variables
     output[3:0] STATE
     );
+    
+    assign ftdi_siwu = 1'b0;
     
     // Global reset register. Pull all resets high for a while.
     reg global_rst;
@@ -94,34 +100,7 @@ module Top_Block(
                                    .txEMPTY(txE),
                                    ._state(sync_state)
                                    );
-                                   
-    /*
-    module Multiplexer_Packet_Former(
-        // Packet Data Output
-        output [7:0] packetData,
-        output packetDataGood,
-        output packetDataClk,
-        input readData,
-        
-        // Camera 1 Input
-        input [7:0] camera1PixelData,
-        input camera1PixelDataGood,
-        input camera1PixelDataClk,
-        
-        // Camera 2 Input
-        input [7:0] camera2PixelData,
-        input camera2PixelDataGood,
-        input camera2PixelDataClk,
-        
-        // Camera 3 Input
-        input [7:0] camera3PixelData,
-        input camera3PixelDataGood,
-        input camera3PixelDataClk,
-        
-        input sys_clk,
-        input reset
-        );
-    */                              
+                                                            
     
     // Camera 1 Wires
     wire [7:0] camera1DataBus;
@@ -137,8 +116,14 @@ module Top_Block(
     wire [7:0] camera3DataBus;
     wire camera3DataGood;
     wire camera3DataClk;
+    
+    // Register to start the whole thing...
+    reg startCameras;
      
-    Multiplexer_Packet_Former mpf(  .packetData(dataBus),
+    // This module interleaves the pixels from the camera.
+    // eg: C1_Px1,C2_Px1,C3_Px1,C1_Px2,C2_Px2,C3_Px2
+    Multiplexer_Packet_Former mpf(  // Output data
+                                    .packetData(dataBus),
                                     .packetDataGood(mpfDataGood),
                                     .packetDataClk(mpfClkOut),
                                     .readData(mpfReadData),
@@ -161,4 +146,101 @@ module Top_Block(
                                     .sys_clk(sysClk),
                                     .reset(global_rst)
                                     );
+                                    
+                                    
+    reg[3:0] state;
+    parameter WAIT_FOR_START = 12,STREAMING=1, READ_HOST_DATA=2,PROCESS_HOST_DATA=3,RESET=4;
+    
+    // Counter to control how long to wait for before Reset is complete.
+    reg[9:0] counter;
+    
+    // For Debugging.
+    assign STATE = state;
+    
+    always@(state) begin
+            case(state)
+                // Pull the global reset pin high
+                RESET: begin
+                    global_rst <= 1;
+                    startCameras <= 0;
+                    readHostData <= 0;
+                end
+                // Pull the global reset low and wait for start char.
+                WAIT_FOR_START: begin
+                    global_rst <= 0;
+                    startCameras <= 0;
+                    readHostData <= 0;
+                end
+                // Currently activly transmitting data.
+                STREAMING: begin
+                    global_rst <= 0;
+                    startCameras <= 1;
+                    readHostData <=0;
+                end
+                // Reading data from the host.
+                READ_HOST_DATA: begin
+                    readHostData <=1;
+                end
+                
+                // Checking if our data matches the magic start bit.
+                PROCESS_HOST_DATA: begin
+                    readHostData <= 0;
+                end
+                
+                // Default state, pull reset high.
+                default: begin
+                    global_rst <= 1;
+                    startCameras <= 0;
+                    readHostData <=0;
+                end
+            endcase
+        end
+       
+        
+        always@(posedge sysClk) begin
+            case(state)
+                // Put us in reset and clear the counter.
+                default: begin
+                    state = RESET;
+                    counter = 0;
+                end
+                
+                // If the Counter meets some amount, move to wait for start.
+                RESET: begin
+                    counter <= counter + 1;
+                    if(counter >= 10'h030)
+                        state = WAIT_FOR_START;
+                end
+                
+                // Wait until we have data from the host.
+                WAIT_FOR_START: begin
+                    if(newHostData)
+                        state = READ_HOST_DATA;
+                    else
+                        state = WAIT_FOR_START;
+                end
+                
+                // We have data, lets read it.
+                READ_HOST_DATA: begin
+                    state = PROCESS_HOST_DATA;
+                end
+                
+                // We read the data, lets see if it matches 0xAA, if it does, enter streaming mode, otherwise go back to waiting.
+                PROCESS_HOST_DATA: begin
+                    if (hostDataBus == 8'b10101010)
+                        state = STREAMING;
+                    else
+                        state = WAIT_FOR_START;
+                end
+                
+                // We are streaming. No way to leave currentlt.
+                // TODO: Add a way to leave streaming mode.
+                STREAMING: begin
+                    state = STREAMING;
+                end
+                
+            endcase
+        
+        end
+    
 endmodule
