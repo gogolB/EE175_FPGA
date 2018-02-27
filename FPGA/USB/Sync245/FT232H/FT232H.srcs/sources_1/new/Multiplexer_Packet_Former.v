@@ -112,11 +112,6 @@ module Multiplexer_Packet_Former(
     reg[3:0] nextState; 
     parameter IDLE = 0, READ_CAMERA_1 = 1, READ_CAMERA_2 = 2, READ_CAMERA_3 = 3, WAIT_CAMERA_1 = 4, WAIT_CAMERA_2 = 5, WAIT_CAMERA_3 = 6;
     
-    
-    always@(posedge sys_clk) begin
-        state <= nextState;
-    end
-    
     always @(state) begin
         case(state)
             IDLE: begin
@@ -187,7 +182,7 @@ module Multiplexer_Packet_Former(
     
         case(state)
             IDLE: begin
-                if(~camera1FIFOEmpty && readData) begin
+                if(~camera1FIFOEmpty) begin
                     state <= READ_CAMERA_1;
                 end else begin
                     state <= IDLE;
@@ -195,7 +190,7 @@ module Multiplexer_Packet_Former(
             end
             
             READ_CAMERA_1: begin
-                if(~camera2FIFOEmpty && readData) begin
+                if(~camera2FIFOEmpty) begin
                     state <= READ_CAMERA_2;
                 end else begin
                     state <= WAIT_CAMERA_2;
@@ -203,7 +198,7 @@ module Multiplexer_Packet_Former(
             end
             
             WAIT_CAMERA_2: begin
-                if(~camera2FIFOEmpty && readData) begin
+                if(~camera2FIFOEmpty) begin
                     state <= READ_CAMERA_2;
                 end else begin
                     state <= WAIT_CAMERA_2;
@@ -211,7 +206,7 @@ module Multiplexer_Packet_Former(
             end
 
             READ_CAMERA_2: begin
-                if(~camera3FIFOEmpty && readData) begin
+                if(~camera3FIFOEmpty) begin
                     state <= READ_CAMERA_3;
                 end else begin
                     state <= WAIT_CAMERA_3;
@@ -219,7 +214,7 @@ module Multiplexer_Packet_Former(
             end
             
             WAIT_CAMERA_3: begin
-                if(~camera3FIFOEmpty && readData) begin
+                if(~camera3FIFOEmpty) begin
                     state <= READ_CAMERA_3;
                 end else begin
                     state <= WAIT_CAMERA_3;
@@ -227,7 +222,7 @@ module Multiplexer_Packet_Former(
             end
 
             READ_CAMERA_3: begin
-                if(~camera1FIFOEmpty && readData) begin
+                if(~camera1FIFOEmpty) begin
                     state <= READ_CAMERA_1;
                 end else begin
                     state <= WAIT_CAMERA_1;
@@ -235,7 +230,7 @@ module Multiplexer_Packet_Former(
             end
             
             WAIT_CAMERA_1: begin
-                if(~camera1FIFOEmpty && readData) begin
+                if(~camera1FIFOEmpty) begin
                     state <= READ_CAMERA_1;
                 end else begin
                     state <= WAIT_CAMERA_1;
